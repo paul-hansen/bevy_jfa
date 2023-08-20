@@ -12,7 +12,10 @@ use bevy::{
     },
 };
 
-use crate::{resources::OutlineResources, JFA_INIT_SHADER_HANDLE, JFA_TEXTURE_FORMAT};
+use crate::{
+    resources::OutlineResources, FULLSCREEN_SHADER_HANDLE, JFA_INIT_SHADER_HANDLE,
+    JFA_TEXTURE_FORMAT,
+};
 
 #[derive(Resource)]
 pub struct JfaInitPipeline {
@@ -30,7 +33,7 @@ impl FromWorld for JfaInitPipeline {
             label: Some("outline_jfa_init_pipeline".into()),
             layout: vec![dims_layout, init_layout],
             vertex: VertexState {
-                shader: JFA_INIT_SHADER_HANDLE.typed::<Shader>(),
+                shader: FULLSCREEN_SHADER_HANDLE.typed::<Shader>(),
                 shader_defs: vec![],
                 entry_point: "vertex".into(),
                 buffers: vec![],

@@ -19,6 +19,8 @@
 //!    tied to the camera rather than the mesh.
 //! 4. Add an [`Outline`] component to the mesh with `enabled: true`.
 
+use bevy::reflect::TypePath;
+use bevy::render::Render;
 use bevy::{
     app::prelude::*,
     asset::{Assets, Handle, HandleUntyped},
@@ -116,20 +118,30 @@ use crate::graph::outline as outline_graph;
 
 impl Plugin for OutlinePlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(RenderAssetPlugin::<OutlineStyle>::default())
+        app.add_plugins(RenderAssetPlugin::<OutlineStyle>::default())
             .add_asset::<OutlineStyle>()
             .init_resource::<OutlineSettings>();
 
         let mut shaders = app.world.get_resource_mut::<Assets<Shader>>().unwrap();
 
-        let mask_shader = Shader::from_wgsl(include_str!("shaders/mask.wgsl"));
-        let jfa_init_shader = Shader::from_wgsl(include_str!("shaders/jfa_init.wgsl"));
-        let jfa_shader = Shader::from_wgsl(include_str!("shaders/jfa.wgsl"));
-        let fullscreen_shader = Shader::from_wgsl(include_str!("shaders/fullscreen.wgsl"))
-            .with_import_path("outline::fullscreen");
-        let outline_shader = Shader::from_wgsl(include_str!("shaders/outline.wgsl"));
-        let dimensions_shader = Shader::from_wgsl(include_str!("shaders/dimensions.wgsl"))
-            .with_import_path("outline::dimensions");
+        let mask_shader = Shader::from_wgsl(include_str!("shaders/mask.wgsl"), "shaders/mask.wgsl");
+        let jfa_init_shader = Shader::from_wgsl(
+            include_str!("shaders/jfa_init.wgsl"),
+            "shaders/jfa_init.wgsl",
+        );
+        let jfa_shader = Shader::from_wgsl(include_str!("shaders/jfa.wgsl"), "shaders/jfa.wgsl");
+        let fullscreen_shader = Shader::from_wgsl(
+            include_str!("shaders/fullscreen.wgsl"),
+            "shaders/fullscreen.wgsl",
+        )
+        .with_import_path("outline::fullscreen");
+        let outline_shader =
+            Shader::from_wgsl(include_str!("shaders/outline.wgsl"), "shaders/outline.wgsl");
+        let dimensions_shader = Shader::from_wgsl(
+            include_str!("shaders/dimensions.wgsl"),
+            "shaders/dimensions.wgsl",
+        )
+        .with_import_path("outline::dimensions");
 
         shaders.set_untracked(MASK_SHADER_HANDLE, mask_shader);
         shaders.set_untracked(JFA_INIT_SHADER_HANDLE, jfa_init_shader);
@@ -143,38 +155,45 @@ impl Plugin for OutlinePlugin {
             Err(_) => return,
         };
 
-        render_app
-            .init_resource::<DrawFunctions<MeshMask>>()
-            .add_render_command::<MeshMask, SetItemPipeline>()
-            .add_render_command::<MeshMask, DrawMeshMask>()
-            .init_resource::<resources::OutlineResources>()
-            .init_resource::<mask::MeshMaskPipeline>()
-            .init_resource::<SpecializedMeshPipelines<mask::MeshMaskPipeline>>()
-            .init_resource::<jfa_init::JfaInitPipeline>()
-            .init_resource::<jfa::JfaPipeline>()
-            .init_resource::<outline::OutlinePipeline>()
-            .init_resource::<SpecializedRenderPipelines<outline::OutlinePipeline>>()
-            .add_system(extract_outline_settings.in_schedule(ExtractSchedule))
-            .add_system(extract_camera_outlines.in_schedule(ExtractSchedule))
-            .add_system(extract_mask_camera_phase.in_schedule(ExtractSchedule))
-            .add_system(resources::recreate_outline_resources.in_set(RenderSet::Queue))
-            .add_system(queue_mesh_masks.in_set(RenderSet::Queue));
-
         let outline_graph = graph::outline(render_app).unwrap();
 
         let mut root_graph = render_app.world.resource_mut::<RenderGraph>();
         let draw_3d_graph = root_graph.get_sub_graph_mut(core_3d::graph::NAME).unwrap();
-        let draw_3d_input = draw_3d_graph.input_node().id;
 
         draw_3d_graph.add_sub_graph(outline_graph::NAME, outline_graph);
         let outline_driver = draw_3d_graph.add_node(OutlineDriverNode::NAME, OutlineDriverNode);
-        draw_3d_graph.add_slot_edge(
-            draw_3d_input,
-            core_3d::graph::input::VIEW_ENTITY,
-            outline_driver,
-            OutlineDriverNode::INPUT_VIEW,
-        );
-        draw_3d_graph.add_node_edge(core_3d::graph::node::MAIN_PASS, outline_driver);
+
+        draw_3d_graph.add_node_edge(core_3d::graph::node::END_MAIN_PASS, outline_driver);
+    }
+
+    fn finish(&self, app: &mut App) {
+        let render_app = match app.get_sub_app_mut(RenderApp) {
+            Ok(r) => r,
+            Err(_) => return,
+        };
+        render_app
+            .init_resource::<DrawFunctions<MeshMask>>()
+            .add_render_command::<MeshMask, SetItemPipeline>()
+            .add_render_command::<MeshMask, DrawMeshMask>()
+            .init_resource::<OutlineResources>()
+            .init_resource::<MeshMaskPipeline>()
+            .init_resource::<SpecializedMeshPipelines<MeshMaskPipeline>>()
+            .init_resource::<jfa_init::JfaInitPipeline>()
+            .init_resource::<jfa::JfaPipeline>()
+            .init_resource::<outline::OutlinePipeline>()
+            .init_resource::<SpecializedRenderPipelines<outline::OutlinePipeline>>()
+            .add_systems(
+                ExtractSchedule,
+                (
+                    extract_outline_settings,
+                    extract_camera_outlines,
+                    extract_mask_camera_phase,
+                ),
+            )
+            .add_systems(
+                Render,
+                (resources::recreate_outline_resources, queue_mesh_masks).in_set(RenderSet::Queue),
+            );
     }
 }
 
@@ -215,7 +234,7 @@ type DrawMeshMask = (
 );
 
 /// Visual style for an outline.
-#[derive(Clone, Debug, PartialEq, TypeUuid)]
+#[derive(Clone, Debug, PartialEq, TypeUuid, TypePath)]
 #[uuid = "256fd556-e497-4df2-8d9c-9bdb1419ee90"]
 pub struct OutlineStyle {
     pub color: Color,

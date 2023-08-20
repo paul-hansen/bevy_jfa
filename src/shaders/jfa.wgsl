@@ -1,5 +1,5 @@
-#import outline::fullscreen
-#import outline::dimensions
+#import outline::fullscreen VertexOut
+#import outline::dimensions dims
 
 // Bind group 0 imported from outline::dimensions
 
@@ -14,12 +14,8 @@ var src_buffer: texture_2d<f32>;
 @group(1) @binding(2)
 var src_sampler: sampler;
 
-struct FragmentIn {
-    @location(0) texcoord: vec2<f32>,
-};
-
 @fragment
-fn fragment(in: FragmentIn) -> @location(0) vec4<f32> {
+fn fragment(in: VertexOut) -> @location(0) vec4<f32> {
     // Scaling factor to convert framebuffer to pixel coordinates.
     let fb_to_pix = vec2<f32>(dims.width, dims.height);
     // Pixel coordinates of this fragment.

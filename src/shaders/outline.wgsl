@@ -1,5 +1,5 @@
-#import outline::fullscreen
-#import outline::dimensions
+#import outline::fullscreen VertexOut
+#import outline::dimensions dims
 
 struct Params {
     color: vec4<f32>,

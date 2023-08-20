@@ -1,3 +1,4 @@
+use bevy::render::render_resource::WgpuFeatures;
 use bevy::{
     prelude::*,
     render::{
@@ -18,7 +19,8 @@ use bevy::{
 
 use crate::{
     resources::{self, OutlineResources},
-    CameraOutline, OutlineStyle, FULLSCREEN_PRIMITIVE_STATE, OUTLINE_SHADER_HANDLE,
+    CameraOutline, OutlineStyle, FULLSCREEN_PRIMITIVE_STATE, FULLSCREEN_SHADER_HANDLE,
+    OUTLINE_SHADER_HANDLE,
 };
 
 #[derive(Clone, Debug, Default, PartialEq, ShaderType)]
@@ -72,15 +74,15 @@ pub struct OutlinePipelineKey {
 
 impl OutlinePipelineKey {
     pub fn new(format: TextureFormat) -> Option<OutlinePipelineKey> {
-        let info = format.describe();
+        let info = format;
 
-        if info.sample_type == TextureSampleType::Depth {
+        if info.sample_type(None) == Some(TextureSampleType::Depth) {
             // Can't use this format as a color attachment.
             return None;
         }
 
         if info
-            .guaranteed_format_features
+            .guaranteed_format_features(WgpuFeatures::all())
             .allowed_usages
             .contains(TextureUsages::RENDER_ATTACHMENT)
         {
@@ -116,7 +118,7 @@ impl SpecializedRenderPipeline for OutlinePipeline {
                 self.params_layout.clone(),
             ],
             vertex: VertexState {
-                shader: OUTLINE_SHADER_HANDLE.typed::<Shader>(),
+                shader: FULLSCREEN_SHADER_HANDLE.typed::<Shader>(),
                 shader_defs: vec![],
                 entry_point: "vertex".into(),
                 buffers: vec![],
@@ -220,7 +222,7 @@ impl Node for OutlineNode {
         let mut tracked_pass = render_context.begin_tracked_render_pass(RenderPassDescriptor {
             label: Some("jfa_outline"),
             color_attachments: &[Some(RenderPassColorAttachment {
-                view: target.main_texture(),
+                view: target.main_texture_view(),
                 resolve_target: None,
                 ops: Operations {
                     load: LoadOp::Load,

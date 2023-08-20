@@ -36,6 +36,13 @@ impl OutlineDriverNode {
 }
 
 impl Node for OutlineDriverNode {
+    fn input(&self) -> Vec<SlotInfo> {
+        vec![SlotInfo {
+            name: Self::INPUT_VIEW.into(),
+            slot_type: SlotType::Entity,
+        }]
+    }
+
     fn run(
         &self,
         graph: &mut RenderGraphContext,
@@ -43,17 +50,11 @@ impl Node for OutlineDriverNode {
         _world: &World,
     ) -> Result<(), NodeRunError> {
         let view_ent = graph.get_input_entity(Self::INPUT_VIEW)?;
+        let slot = graph.get_input(Self::INPUT_VIEW)?;
 
-        graph.run_sub_graph(outline::NAME, vec![view_ent.into()])?;
+        graph.run_sub_graph(outline::NAME, vec![slot.clone()], Some(view_ent))?;
 
         Ok(())
-    }
-
-    fn input(&self) -> Vec<SlotInfo> {
-        vec![SlotInfo {
-            name: Self::INPUT_VIEW.into(),
-            slot_type: SlotType::Entity,
-        }]
     }
 }
 

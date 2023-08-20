@@ -41,7 +41,7 @@ impl SpecializedMeshPipeline for MeshMaskPipeline {
 
         desc.layout = vec![
             self.mesh_pipeline.view_layout_multisampled.clone(),
-            self.mesh_pipeline.mesh_layout.clone(),
+            self.mesh_pipeline.mesh_layouts.model_only.clone(),
         ];
 
         desc.vertex.shader = MASK_SHADER_HANDLE.typed::<Shader>();

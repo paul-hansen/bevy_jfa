@@ -1,5 +1,5 @@
-#import outline::fullscreen
-#import outline::dimensions
+#import outline::fullscreen VertexOut
+#import outline::dimensions dims
 
 // Jump flood initialization pass.
 @group(1) @binding(0)
@@ -7,12 +7,8 @@ var mask_buffer: texture_2d<f32>;
 @group(1) @binding(1)
 var mask_sampler: sampler;
 
-struct FragmentIn {
-    @location(0) texcoord: vec2<f32>,
-};
-
 @fragment
-fn fragment(in: FragmentIn) -> @location(0) vec4<f32> {
+fn fragment(in: VertexOut) -> @location(0) vec4<f32> {
     let out_position = vec4<f32>(in.texcoord, 0.0, 1.0);
 
     // Scaling factor to convert framebuffer to pixel coordinates.

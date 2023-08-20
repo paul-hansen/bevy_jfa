@@ -1,7 +1,7 @@
 // Mask generation shader.
 
-#import bevy_render::view
-#import bevy_pbr::mesh_types
+#import bevy_render::view View
+#import bevy_pbr::mesh_types Mesh
 
 @group(0) @binding(0)
 var<uniform> view: View;
